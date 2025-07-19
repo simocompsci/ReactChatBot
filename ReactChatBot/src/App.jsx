@@ -1,145 +1,112 @@
-import { useState, useEffect } from 'react'
-
-import './App.css'
+import { useState } from 'react';
 
 function App() {
-  const [showResponse, setShowResponse] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [responseMessage, setResponseMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-
+  const [loading, setLoading] = useState(false);
   const apiKey = import.meta.env.VITE_API_KEY;
 
   const sendMessage = async () => {
-    if (!inputMessage) {
-      setResponseMessage("Please enter some input!");
-      return;
-    }
+    if (!inputMessage.trim()) return;
 
-    setResponseMessage("Loading...");
-    setErrorMessage("");
-    setShowResponse(true);
+    setLoading(true);
+    setResponseMessage("");
 
     try {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": "<YOUR_SITE_URL>",
-          "X-Title": "<YOUR_SITE_NAME>",
-          "Content-Type": "application/json"
+          "HTTP-Referer": "https://yourdomain.com",
+          "X-Title": "Your App Name",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          "model": "deepseek/deepseek-r1-0528:free",
-          "messages": [{
-            "role": "user",
-            "content": inputMessage
-          }]
-        })
+          model: "deepseek/deepseek-r1-0528:free",
+          messages: [
+            {
+              role: "user",
+              content: inputMessage,
+            },
+          ],
+        }),
       });
 
       const data = await response.json();
-      console.log(data);
-      const messageContent = data.choices?.[0]?.message?.content || "No response";
-      setResponseMessage(messageContent);
-
-      // If you want to see the response, either:
-      // or
-      setTimeout(() => console.log(responseMessage), 0); // after state update
-
-    } catch (error) {
-      setErrorMessage("Error: " + error.message);
-      console.error("Error:", error);
+      const content = data.choices?.[0]?.message?.content || "No response";
+      setResponseMessage(content);
+    } catch (err) {
+      setResponseMessage("Error: " + err.message);
     }
+
+    setLoading(false);
+    setInputMessage("");
   };
 
-  
+  const formatResponse = (text) => {
+    const lines = text.split('\n');
+    return lines.map((line, index) => {
+      if (line.startsWith('**') && line.endsWith('**')) {
+        return (
+          <h3 key={index} className="text-purple-600 font-semibold text-lg my-2">
+            {line.replace(/\*\*/g, '')}
+          </h3>
+        );
+      } else if (line.startsWith('- ')) {
+        return (
+          <li key={index} className="list-disc list-inside text-sm text-gray-300">
+            {line.substring(2)}
+          </li>
+        );
+      } else {
+        return (
+          <p key={index} className="text-gray-300 text-sm leading-relaxed mb-2">
+            {line}
+          </p>
+        );
+      }
+    });
+  };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-gray-900">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4 sm:p-6 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-600 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-lg">AI</span>
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-semibold text-white">AI Assistant</h1>
-            <p className="text-gray-400 text-xs sm:text-sm">Powered by advanced AI • Always here to help</p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen flex flex-col bg-zinc-900 text-white font-sans">
+      <header className="bg-zinc-800 px-6 py-4 shadow-md">
+        <h1 className="text-xl font-bold text-purple-500">Modern AI Chatbot</h1>
+        <p className="text-sm text-zinc-400">Talk to your assistant</p>
+      </header>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {/* User Message */}
-        {inputMessage && showResponse && (
-          <div className="flex justify-end">
-            <div className="bg-purple-600 text-white p-3 sm:p-4 rounded-2xl rounded-tr-none max-w-[80%]">
-              <p className="text-sm sm:text-base leading-relaxed">{inputMessage}</p>
-            </div>
+      <main className="flex-1 overflow-auto px-6 py-8">
+        {responseMessage && (
+          <div className="bg-zinc-800 p-5 rounded-2xl shadow-lg border border-zinc-700">
+            {formatResponse(responseMessage)}
           </div>
         )}
 
-        {/* AI Response */}
-        {showResponse && (
-          <div className="flex items-start gap-2 sm:gap-3">
-            <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 bg-purple-600 text-white flex items-center justify-center rounded-full font-bold text-xs sm:text-sm">
-              AI
-            </div>
-            <div className="bg-gray-700 text-gray-100 p-3 sm:p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[90%] sm:max-w-[80%]">
-              <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
-                {responseMessage.split('\n').map((paragraph, index) => (
-                  <p key={index} className="mb-3 last:mb-0">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
+        {loading && (
+          <div className="text-zinc-400 text-sm mt-4 animate-pulse">Thinking...</div>
         )}
+      </main>
 
-        {/* Loading state */}
-        {!showResponse && inputMessage && (
-          <div className="flex items-start gap-2 sm:gap-3">
-            <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 bg-purple-600 text-white flex items-center justify-center rounded-full font-bold text-xs sm:text-sm">
-              AI
-            </div>
-            <div className="bg-gray-700 text-gray-100 p-3 sm:p-4 rounded-2xl rounded-tl-none shadow-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Input Area */}
-      <div className="p-4 sm:p-6 bg-gray-800 border-t border-gray-700 flex-shrink-0">
-        <div className="flex gap-2 sm:gap-3">
+      <footer className="p-4 bg-zinc-800 border-t border-zinc-700">
+        <div className="flex gap-3">
           <input
+            type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type your message... (Press Enter to send)"
-            className="flex-1 p-3 sm:p-4 rounded-xl bg-gray-700 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Type your message..."
+            className="flex-1 p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
           <button
             onClick={sendMessage}
-            className="bg-purple-600 text-white p-3 sm:px-6 sm:py-4 rounded-xl font-medium hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-            aria-label="Send message"
+            className="bg-purple-600 px-5 py-3 rounded-xl hover:bg-purple-700 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+            Send
           </button>
         </div>
-      </div>
+      </footer>
     </div>
-
   );
 }
 
-export default App
+export default App;
